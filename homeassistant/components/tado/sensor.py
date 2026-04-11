@@ -11,8 +11,9 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import PERCENTAGE, UnitOfTemperature
+from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
@@ -28,6 +29,8 @@ from .coordinator import TadoConfigEntry, TadoDataUpdateCoordinator
 from .entity import TadoHomeEntity, TadoZoneEntity
 
 _LOGGER = logging.getLogger(__name__)
+
+SENSOR_DATA_CATEGORY_RATE_LIMIT = "rate_limit"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -127,6 +130,33 @@ HOME_SENSORS = [
         translation_key="automatic_geofencing",
         state_fn=get_automatic_geofencing,
         data_category=SENSOR_DATA_CATEGORY_GEOFENCE,
+    ),
+    TadoSensorEntityDescription(
+        key="rate limit remaining",
+        translation_key="rate_limit_remaining",
+        state_fn=lambda data: int(data["remaining"]),
+        native_unit_of_measurement="requests",
+        state_class=SensorStateClass.MEASUREMENT,
+        data_category=SENSOR_DATA_CATEGORY_RATE_LIMIT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    TadoSensorEntityDescription(
+        key="rate limit per day",
+        translation_key="rate_limit_per_day",
+        state_fn=lambda data: int(data["per-day"]),
+        native_unit_of_measurement="requests",
+        state_class=SensorStateClass.MEASUREMENT,
+        data_category=SENSOR_DATA_CATEGORY_RATE_LIMIT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    TadoSensorEntityDescription(
+        key="rate limit window seconds",
+        translation_key="rate_limit_window_seconds",
+        state_fn=lambda data: int(data["window-seconds"]),
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        state_class=SensorStateClass.MEASUREMENT,
+        data_category=SENSOR_DATA_CATEGORY_RATE_LIMIT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
 ]
 
@@ -251,8 +281,12 @@ class TadoHomeSensor(TadoHomeEntity, SensorEntity):
         if self.entity_description.data_category is not None:
             if self.entity_description.data_category == SENSOR_DATA_CATEGORY_WEATHER:
                 tado_sensor_data = tado_weather_data
-            else:
+            elif self.entity_description.data_category == SENSOR_DATA_CATEGORY_GEOFENCE:
                 tado_sensor_data = tado_geofence_data
+            elif self.entity_description.data_category == SENSOR_DATA_CATEGORY_RATE_LIMIT:
+                tado_sensor_data = self.coordinator.get_rate_limit()
+            else:
+                return
         self._attr_native_value = self.entity_description.state_fn(tado_sensor_data)
         if self.entity_description.attributes_fn is not None:
             self._attr_extra_state_attributes = self.entity_description.attributes_fn(

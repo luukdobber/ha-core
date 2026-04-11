@@ -73,6 +73,15 @@
       "outdoor_temperature": {
         "name": "Outdoor temperature"
       },
+      "rate_limit_per_day": {
+        "name": "Rate limit per day"
+      },
+      "rate_limit_remaining": {
+        "name": "Rate limit remaining"
+      },
+      "rate_limit_window_seconds": {
+        "name": "Rate limit window seconds"
+      },
       "solar_percentage": {
         "name": "Solar percentage"
       },
